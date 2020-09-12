@@ -8,7 +8,7 @@ from flask import session
 
 
 class EnergyMonitor():
-	def __init__(self, config_path=None, max_samples=64):
+	def __init__(self, config_path=None):
 		with open(config_path) as json_file:
 			self.config = json.load(json_file)
 		
@@ -32,7 +32,9 @@ class EnergyMonitor():
 		rows = self.cursor.fetchall()
 		self.startTime = rows[0][1]
 		self.interval = 5*60
-		self.max_samples = max_samples
+		self.max_samples = 32
+		if 'max_samples' in self.config:
+			self.max_samples = self.config['max_samples']
 
 		self.cursor.execute("SHOW columns FROM `energie10`")
 		self.columns = self.cursor.fetchall()
