@@ -1,3 +1,4 @@
+import sys
 from datetime import datetime, timedelta
 import time
 from threading import Condition
@@ -7,10 +8,11 @@ from flask import session
 
 
 class EnergyMonitor():
-	def __init__(self, config_path=None):
-		with open('./config.js') as json_file:
+	def __init__(self, config_path=None, max_samples=64):
+		with open(config_path) as json_file:
 			self.config = json.load(json_file)
 		
+
 		self.cv = Condition()
 
 		self.mysql = MySQL()
@@ -21,7 +23,7 @@ class EnergyMonitor():
 		self.app.config['MYSQL_DATABASE_USER'] = self.config['user']
 		self.app.config['MYSQL_DATABASE_PASSWORD'] = self.config['password']
 		self.app.config['MYSQL_DATABASE_DB'] = self.config['database']
-		self.app.config['MYSQL_DATABASE_HOST'] = 'localhost'
+		self.app.config['MYSQL_DATABASE_HOST'] = self.config['server']
 		self.mysql.init_app(self.app)
 
 		self.conn = self.mysql.connect()
@@ -30,6 +32,7 @@ class EnergyMonitor():
 		rows = self.cursor.fetchall()
 		self.startTime = rows[0][1]
 		self.interval = 5*60
+		self.max_samples = max_samples
 
 		self.cursor.execute("SHOW columns FROM `energie10`")
 		self.columns = self.cursor.fetchall()
@@ -74,30 +77,39 @@ class EnergyMonitor():
 		self.cv.acquire()
 		while True:
 			data = {}
-			print("\n--------------------------> Processing New Data ... ")
+			print("\n--------------------------------------------------------------------->")
 			rows = self.getData()
+			samples_step = int(len(rows)/self.max_samples) if len(rows) > self.max_samples else 1
 
 			labels = list()
-			for row in rows:
-				labels.append(row[1])
+			for r in range(0, len(rows), samples_step):
+				labels.append(rows[r][1])
 
 			data['labels'] = labels;
 			data['datasets'] = []
+
 			for c in range(2, len(self.columns)):
 				data['datasets'].append({'label':self.columns[c][0], 'data': []})
-
 			for row in rows:
 				for c in range(2, len(self.columns)):
-					value = row[c];
-					data['datasets'][c-2]['data'].append(value)
-	       	
+					data['datasets'][c-2]['data'].append(row[c])
+			if samples_step > 1:
+				for c in range(2, len(self.columns)):
+					data['datasets'][c-2]['data'] = self.subsample(data['datasets'][c-2]['data'], samples_step)
+
 			yield f"data:{json.dumps(data)}\n\n"
-			print("--------------------------> New Data submitted ")
+			print("\n<---------------------------------------------------------------------")
 			self.cv.wait()
 		
 		self.cv.release()
 	        
+	def subsample(self, data, sample_size):
+		samples = list(zip(*[iter(data)]*sample_size)) 
+		return list(map(lambda x:sum(x)/float(len(x)), samples))
 
 if __name__ == "__main__":
-    energyMonitor = EnergyMonitor()
-    energyMonitor.start()
+	config_path = "./config.js"
+	if len(sys.argv) == 2:
+		config_path = sys.argv[1]
+	energyMonitor = EnergyMonitor(config_path)
+	energyMonitor.start()
