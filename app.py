@@ -52,7 +52,7 @@ def handle_command():
 
 def getData(cursor, startTime, interval):
 	endTime = startTime +  timedelta(seconds=interval)
-	print("--------- data {} : {}".format(startTime, endTime))
+	print("\n\t Interval {} -> {}\n".format(startTime, endTime))
 	cursor.execute("SELECT * FROM `energie10` WHERE date between timestamp \""+ str(startTime) + "\" and timestamp \""+str(endTime)+"\"")
 	return cursor.fetchall()
 
@@ -73,7 +73,7 @@ def dataHandler():
 	while True:
 		cv.acquire()
 		data = {}
-		print("-------------------------- New Data ")
+		print("\n--------------------------> Processing New Data ... ")
 		rows = getData(cursor, startTime, interval)
 		labels = list()
 		for row in rows:
@@ -90,6 +90,7 @@ def dataHandler():
 				data['datasets'][c-2]['data'].append(value)
        	
 		yield f"data:{json.dumps(data)}\n\n"
+		print("--------------------------> New Data submitted ")
 		cv.wait()
 		cv.release()
 
