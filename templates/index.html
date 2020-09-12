@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en"   width="100%">
+    <head>
+        <meta charset="UTF-8">
+        <title>Energie Monitoring</title>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.css" rel="stylesheet">
+        <link href="../static/css/style.css" rel="stylesheet">
+
+    </head>
+    <body>
+        <div id="container" class="center" >
+            <canvas id="canvas" class="center" ></canvas>
+            <div id="slider" class="center"> 
+                <button id="left-arrow" class="arrow" onclick="moveLeft()"> </button>
+                <button id="right-arrow" class="arrow" onclick="moveRight()"> </button>
+            </div>
+        </div>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-colorschemes"></script>
+
+        <script>
+            
+            $(document).ready(function () {
+
+                send_command = function(data) {
+                    $.ajax({
+                        url: '/handle_command',
+                        type: 'POST',
+                        data: JSON.stringify(data),
+                        contentType: 'application/json;charset=UTF-8',
+                        cache:false,
+                        error: function(response){
+                            alert('Error sending data')
+                        }
+                    });
+                }
+
+                moveLeft = function() {
+                    send_command({'type': 'scroll_left'})
+                }
+                moveRight = function() {
+                    send_command({'type': 'scroll_right'})
+                }
+
+                var chartConfig = {
+                    type: 'line',
+                    data: {},
+                    options: {
+                        responsive: false,
+                        plugins: {
+                          colorschemes: {
+                            scheme: 'tableau.Tableau20'
+                          }
+                        },
+                        title: {
+                            display: false,
+                            fontSize: 18,
+                            fontColor: "#00c",
+                            padding: 20
+                        },
+                        legend: {
+                            display: true,
+                            labels: {
+                                fontSize: 18,
+                                boxWidth: 1                            }
+                        },
+                        scales: {
+                            xAxes: [{
+                                type: 'time',
+                                distribution: 'series',
+                                display: true,
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: 'Time'
+                                },
+                                time: {
+                                    unit: 'second'
+                                }
+                            }],
+                            yAxes: [{
+                                display: true,
+                                scaleLabel: {
+                                    display: false,
+                                    fontSize: 16,
+                                    fontColor: "#e00"
+                                },
+                                ticks: {
+                                    beginAtZero: false
+                                },
+                            }]
+                        }
+                    }
+                };
+
+                Chart.defaults.global.elements.point.radius = 4;
+                Chart.defaults.global.elements.line.fill = false;
+                const context = document.getElementById('canvas').getContext('2d');
+                const chart = new Chart(context, chartConfig);
+                const source = new EventSource("/data");
+                source.onmessage = function (event) {
+                    chartConfig.data = JSON.parse(event.data);
+                    chart.update();   
+                }
+            });
+        </script>
+    </body>
+</html>
