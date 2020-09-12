@@ -13,6 +13,18 @@
             <canvas id="canvas" class="center" ></canvas>
             <div id="slider" class="center"> 
                 <button id="left-arrow" class="arrow" onclick="moveLeft()"> </button>
+                <div id="interval">
+                    <label for="interval" >Interval:</label>
+                        <select name="Interval" onchange="setInterval(this)" > Interval
+                            <option value="5">5mn</option>
+                            <option value="15">15mn</option>
+                            <option value="30">30mn</option>
+                            <option value="60">1h</option>
+                            <option value="1440">24h</option>
+                            <option value="10080">1week</option>
+                            <option value="43200">1month</option>
+                        </select>
+                </div>
                 <button id="right-arrow" class="arrow" onclick="moveRight()"> </button>
             </div>
         </div>
@@ -45,6 +57,11 @@
                     send_command({'type': 'scroll_right'})
                 }
 
+                setInterval = function(selectObj) {
+                    interval = parseInt(selectObj.value);
+                    send_command({'type': 'interval', 'value': interval*60})
+                }
+
                 var chartConfig = {
                     type: 'line',
                     data: {},
@@ -64,7 +81,7 @@
                         legend: {
                             display: true,
                             labels: {
-                                fontSize: 18,
+                                fontSize: 14,
                                 boxWidth: 1                            }
                         },
                         scales: {

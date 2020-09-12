@@ -31,7 +31,9 @@ body {
 
 #slider {
 	width: 80%;
-	height: 100px;
+	height: 50px;
+	display: flex;
+  	flex-direction: row;
 	margin-top: 0px;
 }
 
@@ -41,13 +43,18 @@ body {
 }
 
 #left-arrow {
-	float: left;
+	margin-left:0px; 
 	background-image: url('../images/left-arrow.png');
 	background-size: 100%;
 }
 
 #right-arrow {
-	float: right;
+	margin-right:0px; 
 	background-image: url('../images/right-arrow.png');
 	background-size: 100%;
+}
+
+#interval {
+	margin-top: 0; 
+	margin:auto;
 }
