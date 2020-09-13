@@ -26,12 +26,13 @@ class EnergyMonitor():
 		self.app.config['MYSQL_DATABASE_HOST'] = self.config['server']
 		self.mysql.init_app(self.app)
 
+		self.interval = 5*60
+
 		self.conn = self.mysql.connect()
 		self.cursor = self.conn.cursor()
 		self.cursor.execute("SELECT * FROM `"+self.config['table']+"`")
 		rows = self.cursor.fetchall()
-		self.startTime = rows[0][1]
-		self.interval = 5*60
+		self.startTime = rows[-1][1] - timedelta(seconds=self.interval)
 		self.max_samples = 32
 		if 'max_samples' in self.config:
 			self.max_samples = self.config['max_samples']
@@ -81,25 +82,29 @@ class EnergyMonitor():
 			data = {}
 			print("\n--------------------------------------------------------------------->")
 			rows = self.getData()
-			samples_step = int(len(rows)/self.max_samples) if len(rows) > self.max_samples else 1
+			if len(rows) > 0:
+				samples_step = int(len(rows)/self.max_samples) if len(rows) > self.max_samples else 1
 
-			labels = list()
-			for r in range(0, len(rows), samples_step):
-				labels.append(rows[r][1])
+				labels = list()
+				for r in range(0, len(rows), samples_step):
+					labels.append(rows[r][1])
 
-			data['labels'] = labels;
-			data['datasets'] = []
+				data['labels'] = labels;
+				data['datasets'] = []
 
-			for c in range(2, len(self.columns)):
-				data['datasets'].append({'label':self.columns[c][0], 'data': []})
-			for row in rows:
 				for c in range(2, len(self.columns)):
-					data['datasets'][c-2]['data'].append(row[c])
-			if samples_step > 1:
-				for c in range(2, len(self.columns)):
-					data['datasets'][c-2]['data'] = self.subsample(data['datasets'][c-2]['data'], samples_step)
-
-			yield f"data:{json.dumps(data)}\n\n"
+					data['datasets'].append({'label':self.columns[c][0], 'data': []})
+				for row in rows:
+					for c in range(2, len(self.columns)):
+						data['datasets'][c-2]['data'].append(row[c])
+				if samples_step > 1:
+					for c in range(2, len(self.columns)):
+						data['datasets'][c-2]['data'] = self.subsample(data['datasets'][c-2]['data'], samples_step)
+				
+				yield f"data:{json.dumps(data)}\n\n"
+				time.sleep(0.5)
+			else:
+				print("------------------------- Empty -------------------")
 			print("\n<---------------------------------------------------------------------")
 			self.cv.wait()
 		

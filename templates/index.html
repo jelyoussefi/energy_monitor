@@ -8,7 +8,7 @@
         <link href="../static/css/style.css" rel="stylesheet">
 
     </head>
-    <body>
+    <body >
         <div id="container" class="center" >
             <canvas id="canvas" class="center" ></canvas>
             <div id="slider" class="center"> 
@@ -61,6 +61,10 @@
                     interval = parseInt(selectObj.value);
                     send_command({'type': 'interval', 'value': interval*60})
                 }
+                var legendClickHandler = function (e, legendItem) {
+                    console.log(e)
+                }
+
 
                 var chartConfig = {
                     type: 'line',
@@ -80,6 +84,7 @@
                         },
                         legend: {
                             display: true,
+                            onClick: legendClickHandler,
                             labels: {
                                 fontSize: 14,
                                 boxWidth: 1                            }
@@ -112,6 +117,7 @@
                     }
                 };
 
+
                 Chart.defaults.global.elements.point.radius = 4;
                 Chart.defaults.global.elements.line.fill = false;
                 const context = document.getElementById('canvas').getContext('2d');
@@ -119,7 +125,7 @@
                 const source = new EventSource("/data");
                 source.onmessage = function (event) {
                     chartConfig.data = JSON.parse(event.data);
-                    chart.update();   
+                    chart.update();
                 }
             });
         </script>
