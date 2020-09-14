@@ -37,8 +37,9 @@ class EnergyMonitor():
 		if 'max_samples' in self.config:
 			self.max_samples = self.config['max_samples']
 
-		self.cursor.execute("SHOW columns FROM `energie10`")
+		self.cursor.execute("SHOW columns FROM `"+self.config['table']+"`")
 		self.columns = self.cursor.fetchall()
+
 
 	def start(self):
 		app = self.app
@@ -73,8 +74,12 @@ class EnergyMonitor():
 	def getData(self):
 		endTime = self.startTime +  timedelta(seconds=self.interval)
 		print("\n\t Interval {} -> {}\n".format(self.startTime, endTime))
-		self.cursor.execute("SELECT * FROM `"+self.config['table']+"` WHERE date between timestamp \""+ str(self.startTime) + "\" and timestamp \""+str(endTime)+"\"")
-		return self.cursor.fetchall()
+		self.cursor.execute("SELECT * FROM `"+self.config['table']+"` ORDER BY date")
+		rows = self.cursor.fetchall();
+		print(len(rows))
+		data = list(filter(lambda row: row[1] >= self.startTime and row[1] <=endTime, rows))
+		print(len(data))
+		return data
 
 	def dataHandler(self): 
 		self.cv.acquire()
@@ -82,6 +87,7 @@ class EnergyMonitor():
 			data = {}
 			print("\n--------------------------------------------------------------------->")
 			rows = self.getData()
+			print(len(rows))
 			if len(rows) > 0:
 				samples_step = int(len(rows)/self.max_samples) if len(rows) > self.max_samples else 1
 
