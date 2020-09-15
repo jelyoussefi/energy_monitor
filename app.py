@@ -12,7 +12,6 @@ class EnergyMonitor():
 		with open(config_path) as json_file:
 			self.config = json.load(json_file)
 		
-
 		self.cv = Condition()
 
 		self.mysql = MySQL()
@@ -26,7 +25,7 @@ class EnergyMonitor():
 		self.app.config['MYSQL_DATABASE_HOST'] = self.config['server']
 		self.mysql.init_app(self.app)
 
-		self.interval = 5*60
+		self.interval = 12*60*60
 
 		self.conn = self.mysql.connect()
 		self.cursor = self.conn.cursor()
@@ -61,7 +60,7 @@ class EnergyMonitor():
 				elif cmd['type'] == 'scroll_right':
 					self.startTime += timedelta(seconds=self.interval)
 				elif cmd['type'] == 'interval':
-					self.interval = cmd['value']
+					self.interval = cmd['value']*60
 
 				self.cv.notify()
 				self.cv.release()
@@ -89,6 +88,8 @@ class EnergyMonitor():
 				for r in range(0, len(rows), samples_step):
 					labels.append(rows[r][1])
 
+				print("=========== {}  -> {}".format(labels[0], labels[-1]))
+
 				data['labels'] = labels;
 				data['datasets'] = []
 
@@ -96,11 +97,11 @@ class EnergyMonitor():
 					data['datasets'].append({'label':self.columns[c][0], 'data': []})
 				for row in rows:
 					for c in range(2, len(self.columns)):
-						data['datasets'][c-2]['data'].append(row[c])
+						data['datasets'][c-2]['data'].append(row[c]/self.getScale(self.columns[c][0]))
 				if samples_step > 1:
 					for c in range(2, len(self.columns)):
 						data['datasets'][c-2]['data'] = self.subsample(data['datasets'][c-2]['data'], samples_step)
-				
+
 				yield f"data:{json.dumps(data)}\n\n"
 				time.sleep(0.5)
 			else:
@@ -109,7 +110,14 @@ class EnergyMonitor():
 			self.cv.wait()
 		
 		self.cv.release()
-	        
+
+	def getScale(self, column):
+		scale = 1
+		if 'scales' in self.config and column in self.config['scales']:
+			scale = self.config['scales'][column]
+		return scale;
+
+
 	def subsample(self, data, sample_size):
 		samples = list(zip(*[iter(data)]*sample_size)) 
 		return list(map(lambda x:sum(x)/float(len(x)), samples))

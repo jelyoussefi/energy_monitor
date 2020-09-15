@@ -61,11 +61,7 @@
                     interval = parseInt(selectObj.value);
                     send_command({'type': 'interval', 'value': interval*60})
                 }
-                var legendClickHandler = function (e, legendItem) {
-                    console.log(e)
-                }
-
-
+                
                 var chartConfig = {
                     type: 'line',
                     data: {},
@@ -84,7 +80,6 @@
                         },
                         legend: {
                             display: true,
-                            onClick: legendClickHandler,
                             labels: {
                                 fontSize: 14,
                                 boxWidth: 1                            }
@@ -99,7 +94,10 @@
                                     labelString: 'Time'
                                 },
                                 time: {
-                                //    unit: 'second'
+                                   displayFormats: {
+                                      second: 'hh:mm:ss',
+                                      minute: 'hh:mm'
+                                   }
                                 }
                             }],
                             yAxes: [{
