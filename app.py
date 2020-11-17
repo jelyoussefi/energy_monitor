@@ -111,10 +111,9 @@ class EnergyMonitor():
 						i_data = self.getDataByLabel(data['datasets'], "I"+str(i))
 						c_data = self.getDataByLabel(data['datasets'], "C"+str(i))
 						if i_data is not None and c_data is not None:
-							power = [u * i * c for u, i, c in zip(u_data, i_data, c_data)]
+							power = [abs(u * i * c) for u, i, c in zip(u_data, i_data, c_data)]
 							data['datasets'].append({'label': 'P'+str(i), 'data': power, 'borderDash': [10,10]})
 							
-
 				yield f"data:{json.dumps(data)}\n\n"
 				time.sleep(0.5)
 			else:
