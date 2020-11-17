@@ -11,19 +11,11 @@
     <body >
         <div id="container" class="center" >
             <canvas id="canvas" class="center" ></canvas>
-            <div id="slider" class="center"> 
+            <div id="slider_container" class="center"> 
                 <button id="left-arrow" class="arrow" onclick="moveLeft()"> </button>
                 <div id="interval">
-                    <label for="interval" >Interval:</label>
-                        <select name="Interval" onchange="setInterval(this)" > Interval
-                            <option value="5">5mn</option>
-                            <option value="15">15mn</option>
-                            <option value="30">30mn</option>
-                            <option value="60">1h</option>
-                            <option value="1440">24h</option>
-                            <option value="10080">1week</option>
-                            <option value="43200">1month</option>
-                        </select>
+                  <input type="range" id="rangeInput" name="rangeInput" min="1" max="48" value="24" onchange="updateInterval(this.value)" oninput="amount.value=rangeInput.value"> 
+                  <output name="amount" id="amount" for="rangeInput"> 24</output>
                 </div>
                 <button id="right-arrow" class="arrow" onclick="moveRight()"> </button>
             </div>
@@ -57,10 +49,12 @@
                     send_command({'type': 'scroll_right'})
                 }
 
-                setInterval = function(selectObj) {
-                    interval = parseInt(selectObj.value);
-                    send_command({'type': 'interval', 'value': interval*60})
+                updateInterval = function(value) {
+                    interval = parseInt(value);
+                    send_command({'type': 'interval', 'value': interval*60*60})
                 }
+
+                updateInterval(document.getElementById('rangeInput').value)
                 
                 var chartConfig = {
                     type: 'line',
@@ -82,7 +76,8 @@
                             display: true,
                             labels: {
                                 fontSize: 14,
-                                boxWidth: 1                            }
+                                boxWidth: 1                            
+                            }
                         },
                         scales: {
                             xAxes: [{
@@ -94,9 +89,11 @@
                                     labelString: 'Time'
                                 },
                                 time: {
-                                   displayFormats: {
-                                      second: 'hh:mm:ss',
-                                      minute: 'hh:mm'
+                                    time: {
+                                        unit: 'minute'
+                                    },
+                                    displayFormats: {
+                                        minute: 'MMM D hh:mm'
                                    }
                                 }
                             }],
@@ -116,7 +113,7 @@
                 };
 
 
-                Chart.defaults.global.elements.point.radius = 4;
+                Chart.defaults.global.elements.point.radius = 0;
                 Chart.defaults.global.elements.line.fill = false;
                 const context = document.getElementById('canvas').getContext('2d');
                 const chart = new Chart(context, chartConfig);

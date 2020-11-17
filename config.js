@@ -6,5 +6,5 @@
 	"server": "localhost",
 	"max_samples": 32,
 	"port": 5000,
-	"scales": {"U": 10}
+	"scales": {"U": 100}
 }

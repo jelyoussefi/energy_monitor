@@ -75,6 +75,12 @@ class EnergyMonitor():
 		self.cursor.execute("SELECT * FROM `"+self.config['table']+"` WHERE date between timestamp \""+ str(self.startTime) + "\" and timestamp \""+str(endTime)+"\"")
 		return self.cursor.fetchall()
 
+	def getDataByLabel(self, datasets, label):
+		for ds in datasets:
+			if 'label' in ds and ds['label'] == label:
+				return ds['data']
+		return None
+
 	def dataHandler(self): 
 		self.cv.acquire()
 		while True:
@@ -88,25 +94,32 @@ class EnergyMonitor():
 				for r in range(0, len(rows), samples_step):
 					labels.append(rows[r][1])
 
-				print("=========== {}  -> {}".format(labels[0], labels[-1]))
-
 				data['labels'] = labels;
 				data['datasets'] = []
 
 				for c in range(2, len(self.columns)):
-					data['datasets'].append({'label':self.columns[c][0], 'data': []})
+					data['datasets'].append({'label':self.columns[c][0], 'data': [], 'dotted': False})
 				for row in rows:
 					for c in range(2, len(self.columns)):
 						data['datasets'][c-2]['data'].append(row[c]/self.getScale(self.columns[c][0]))
 				if samples_step > 1:
 					for c in range(2, len(self.columns)):
 						data['datasets'][c-2]['data'] = self.subsample(data['datasets'][c-2]['data'], samples_step)
+				u_data = self.getDataByLabel(data['datasets'], 'I1')
+				if u_data is not None:
+					for i in range(0, len(data['datasets'])):
+						i_data = self.getDataByLabel(data['datasets'], "I"+str(i))
+						c_data = self.getDataByLabel(data['datasets'], "C"+str(i))
+						if i_data is not None and c_data is not None:
+							power = [u * i * c for u, i, c in zip(u_data, i_data, c_data)]
+							data['datasets'].append({'label': 'P'+str(i), 'data': power, 'borderDash': [10,10]})
+							
 
 				yield f"data:{json.dumps(data)}\n\n"
 				time.sleep(0.5)
 			else:
 				print("------------------------- Empty -------------------")
-			print("\n<---------------------------------------------------------------------")
+
 			self.cv.wait()
 		
 		self.cv.release()

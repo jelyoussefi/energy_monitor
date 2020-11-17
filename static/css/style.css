@@ -29,7 +29,7 @@ body {
 	margin: auto;
 }
 
-#slider {
+#slider_container {
 	width: 80%;
 	height: 50px;
 	display: flex;
@@ -55,6 +55,20 @@ body {
 }
 
 #interval {
-	margin-top: 0; 
+	width: 80%;
 	margin:auto;
+	vertical-align: middle;
+}
+
+#rangeInput {
+	width: 96%;
+	vertical-align: middle;
+}
+
+#amount {
+	font-size: 16px;
+	color: red;
+	font-weight: bold;
+	vertical-align: middle;
+	padding-right: 0px;
 }
