@@ -5,7 +5,7 @@ from threading import Condition
 from flask import Flask, Response, json, request, render_template, jsonify
 from flaskext.mysql import MySQL
 from flask import session
-
+import numpy as np
 
 class EnergyMonitor():
 	def __init__(self, config_path=None):
@@ -25,19 +25,22 @@ class EnergyMonitor():
 		self.app.config['MYSQL_DATABASE_HOST'] = self.config['server']
 		self.mysql.init_app(self.app)
 
-		self.interval = 12*60*60
+		self.interval = 1*60*60
 
 		self.conn = self.mysql.connect()
 		self.cursor = self.conn.cursor()
 		self.cursor.execute("SELECT * FROM `"+self.config['table']+"`")
 		rows = self.cursor.fetchall()
-		self.startTime = rows[-1][1] - timedelta(seconds=self.interval)
+		self.endTime = rows[-1][1]
+		self.startTime = self.endTime -  timedelta(seconds=self.interval)
 		self.max_samples = 32
 		if 'max_samples' in self.config:
 			self.max_samples = self.config['max_samples']
 
 		self.cursor.execute("SHOW columns FROM `"+self.config['table']+"`")
 		self.columns = self.cursor.fetchall()
+		self.colors = ["rgb(250,0,0)", "rgb(0,255,0)", "rgb(0,0,255)", "rgb(0,0,0)", "rgb(253,108,158",
+					"rgb(0,255,255)", "rgb(255,255,0)", "rgb(255,0,255)", "rgb(127,0,255)", "rgb(248,152,85)"]
 
 	def start(self):
 		app = self.app
@@ -56,11 +59,14 @@ class EnergyMonitor():
 				
 				cmd = request.get_json()
 				if cmd['type'] == 'scroll_left':
+					self.endTime -= timedelta(seconds=self.interval)
 					self.startTime -= timedelta(seconds=self.interval)
 				elif cmd['type'] == 'scroll_right':
+					self.endTime += timedelta(seconds=self.interval)
 					self.startTime += timedelta(seconds=self.interval)
 				elif cmd['type'] == 'interval':
-					self.interval = cmd['value']*60
+					self.interval = cmd['value']
+					self.startTime = self.endTime -  timedelta(seconds=self.interval)
 
 				self.cv.notify()
 				self.cv.release()
@@ -70,22 +76,23 @@ class EnergyMonitor():
 		self.app.run(host='0.0.0.0', port=str(self.config['port']), threaded=True)
 
 	def getData(self):
-		endTime = self.startTime +  timedelta(seconds=self.interval)
-		print("\n\t Interval {} -> {}\n".format(self.startTime, endTime))
-		self.cursor.execute("SELECT * FROM `"+self.config['table']+"` WHERE date between timestamp \""+ str(self.startTime) + "\" and timestamp \""+str(endTime)+"\"")
+		print("\n\t Interval {} -> {}\n".format(self.startTime, self.endTime))
+		self.cursor.execute("SELECT * FROM `"+self.config['table']+"` WHERE date between timestamp \""+ str(self.startTime) + "\" and timestamp \""+str(self.endTime)+"\"")
 		return self.cursor.fetchall()
 
 	def getDataByLabel(self, datasets, label):
 		for ds in datasets:
 			if 'label' in ds and ds['label'] == label:
-				return ds['data']
+				return ds
 		return None
 
 	def dataHandler(self): 
 		self.cv.acquire()
 		while True:
 			data = {}
-			print("\n--------------------------------------------------------------------->")
+			data['labels'] = []
+			data['datasets'] = []
+			data['title'] = ""
 			rows = self.getData()
 			if len(rows) > 0:
 				samples_step = int(len(rows)/self.max_samples) if len(rows) > self.max_samples else 1
@@ -93,32 +100,50 @@ class EnergyMonitor():
 				labels = list()
 				for r in range(0, len(rows), samples_step):
 					labels.append(rows[r][1])
-
 				data['labels'] = labels;
 				data['datasets'] = []
 
 				for c in range(2, len(self.columns)):
-					data['datasets'].append({'label':self.columns[c][0], 'data': [], 'dotted': False})
+					data['datasets'].append({'label':self.columns[c][0], 'data': []})
 				for row in rows:
 					for c in range(2, len(self.columns)):
 						data['datasets'][c-2]['data'].append(row[c]/self.getScale(self.columns[c][0]))
 				if samples_step > 1:
 					for c in range(2, len(self.columns)):
 						data['datasets'][c-2]['data'] = self.subsample(data['datasets'][c-2]['data'], samples_step)
-				u_data = self.getDataByLabel(data['datasets'], 'I1')
+				u_data = self.getDataByLabel(data['datasets'], 'U')
 				if u_data is not None:
+					u_data['borderColor'] = self.colors[0]
+					powSum = []
 					for i in range(0, len(data['datasets'])):
 						i_data = self.getDataByLabel(data['datasets'], "I"+str(i))
 						c_data = self.getDataByLabel(data['datasets'], "C"+str(i))
 						if i_data is not None and c_data is not None:
-							power = [abs(u * i * c) for u, i, c in zip(u_data, i_data, c_data)]
-							data['datasets'].append({'label': 'P'+str(i), 'data': power, 'borderDash': [10,10]})
+							color = self.colors[i+1]
+							i_data['borderColor'] = c_data['borderColor'] = color
+							c_data['borderDash'] = [10,5]
+							power = [abs(u * i * c) for u, i, c in zip(u_data['data'], i_data['data'], c_data['data'])]
+							powSum.append(power)
+							data['datasets'].append({'label': 'P'+str(i), 'data': power, 'borderColor': color, 'borderDash': [0,10], 'borderCapStyle' : 'round'})
 							
-				yield f"data:{json.dumps(data)}\n\n"
-				time.sleep(0.5)
+							#dx = (self.endTime-self.startTime).total_seconds()/len(data['labels'])
+							#print("=========== {} {} {}".format((self.endTime-self.startTime).total_seconds(),dx,len(data['labels'])))
+							#integral = np.trapz(power, dx=dx)	
+							#print(integral)
+					powSum = np.sum(powSum, 0)
+					integral = np.mean(powSum)*((self.endTime-self.startTime).total_seconds())
+					data['title'] = str(int(integral))+" w"
+					print(integral)
+				
 			else:
-				print("------------------------- Empty -------------------")
+				data['labels'].append(self.startTime)
+				data['labels'].append(self.endTime)
+				data['datasets'].append({'label': 'Empty', 'data' : [0,0]})
+			print("-------------------------------------------->")
+			yield f"data:{json.dumps(data)}\n\n"
+			print("<--------------------------------------------")
 
+			time.sleep(0.5)		
 			self.cv.wait()
 		
 		self.cv.release()
@@ -133,6 +158,7 @@ class EnergyMonitor():
 	def subsample(self, data, sample_size):
 		samples = list(zip(*[iter(data)]*sample_size)) 
 		return list(map(lambda x:sum(x)/float(len(x)), samples))
+
 
 if __name__ == "__main__":
 	config_path = "./config.js"

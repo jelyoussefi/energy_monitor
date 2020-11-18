@@ -14,8 +14,8 @@
             <div id="slider_container" class="center"> 
                 <button id="left-arrow" class="arrow" onclick="moveLeft()"> </button>
                 <div id="interval">
-                  <input type="range" id="rangeInput" name="rangeInput" min="1" max="48" value="24" onchange="updateInterval(this.value)" oninput="amount.value=rangeInput.value"> 
-                  <output name="amount" id="amount" for="rangeInput"> 24</output>
+                  <input type="range" id="rangeInput" name="rangeInput" min="1" max="24" value="1" onchange="updateInterval(this.value)" oninput="amount.value=rangeInput.value"> 
+                  <output name="amount" id="amount" for="rangeInput">1</output>
                 </div>
                 <button id="right-arrow" class="arrow" onclick="moveRight()"> </button>
             </div>
@@ -60,17 +60,18 @@
                     type: 'line',
                     data: {},
                     options: {
-                        responsive: false,
+                        responsive : false,
                         plugins: {
                           colorschemes: {
                             scheme: 'tableau.Tableau20'
                           }
                         },
                         title: {
-                            display: false,
+                            display: true,
+                            text: "",
                             fontSize: 18,
                             fontColor: "#00c",
-                            padding: 20
+                            padding: 10
                         },
                         legend: {
                             display: true,
@@ -93,7 +94,7 @@
                                         unit: 'minute'
                                     },
                                     displayFormats: {
-                                        minute: 'MMM D hh:mm'
+                                        minute: 'MMM D HH:MM'
                                    }
                                 }
                             }],
@@ -115,11 +116,14 @@
 
                 Chart.defaults.global.elements.point.radius = 0;
                 Chart.defaults.global.elements.line.fill = false;
+                Chart.defaults.global.elements.line.borderWidth = 2;
                 const context = document.getElementById('canvas').getContext('2d');
                 const chart = new Chart(context, chartConfig);
                 const source = new EventSource("/data");
                 source.onmessage = function (event) {
-                    chartConfig.data = JSON.parse(event.data);
+                    data = JSON.parse(event.data);
+                    chartConfig.options.title.text = data['title'];
+                    chartConfig.data = data;
                     chart.update();
                 }
             });
