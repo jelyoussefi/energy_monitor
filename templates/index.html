@@ -73,7 +73,9 @@
                             display: true,
                             labels: {
                                 fontSize: 20,
-                                boxWidth: 2                            
+                                boxWidth: 2,
+                                padding: 15,
+                                fontStyle: "bold"                        
                             }
                         },
                         scales: {
@@ -92,6 +94,9 @@
                                     displayFormats: {
                                         minute: 'MMM D HH:MM'
                                    }
+                                },
+                                ticks: {
+                                    beginAtZero: false
                                 }
                             }],
                             yAxes: [{

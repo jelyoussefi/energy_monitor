@@ -125,10 +125,11 @@ class EnergyMonitor():
 							power = [abs(u * i * c) for u, i, c in zip(u_data['data'], i_data['data'], c_data['data'])]
 							integral = dt*np.mean(power)*self.getScale("U")/1000
 							integral = (int(integral*100)/100)
-							label = 'P'+str(i)
+							label = ' P'+str(i)
 							if integral > 0:
-								label += ": {:.2f}kw".format(integral)
-							data['datasets'].append({'label': label, 'data': power, 'borderColor': color, 'borderDash': [0,10], 'borderCapStyle' : 'round'})
+								label += ": {:.2f} kWh ".format(integral)
+								data['datasets'].append({'label': label, 'data': power, 
+									  'borderColor': color, 'borderDash': [0,10], 'borderCapStyle' : 'round'})
 							
 				
 			else:
