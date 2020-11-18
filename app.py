@@ -25,7 +25,7 @@ class EnergyMonitor():
 		self.app.config['MYSQL_DATABASE_HOST'] = self.config['server']
 		self.mysql.init_app(self.app)
 
-		self.interval = 1*60*60
+		self.interval = 24*60*60
 
 		self.conn = self.mysql.connect()
 		self.cursor = self.conn.cursor()
@@ -59,11 +59,11 @@ class EnergyMonitor():
 				
 				cmd = request.get_json()
 				if cmd['type'] == 'scroll_left':
-					self.endTime -= timedelta(seconds=self.interval)
-					self.startTime -= timedelta(seconds=self.interval)
+					self.endTime -= timedelta(seconds=3600)
+					self.startTime -= timedelta(seconds=3600)
 				elif cmd['type'] == 'scroll_right':
-					self.endTime += timedelta(seconds=self.interval)
-					self.startTime += timedelta(seconds=self.interval)
+					self.endTime += timedelta(seconds=3600)
+					self.startTime += timedelta(seconds=3600)
 				elif cmd['type'] == 'interval':
 					self.interval = cmd['value']
 					self.startTime = self.endTime -  timedelta(seconds=self.interval)
@@ -114,7 +114,7 @@ class EnergyMonitor():
 				u_data = self.getDataByLabel(data['datasets'], 'U')
 				if u_data is not None:
 					u_data['borderColor'] = self.colors[0]
-					powSum = []
+					dt = (self.endTime-self.startTime).total_seconds()/3600.0
 					for i in range(0, len(data['datasets'])):
 						i_data = self.getDataByLabel(data['datasets'], "I"+str(i))
 						c_data = self.getDataByLabel(data['datasets'], "C"+str(i))
@@ -123,27 +123,24 @@ class EnergyMonitor():
 							i_data['borderColor'] = c_data['borderColor'] = color
 							c_data['borderDash'] = [10,5]
 							power = [abs(u * i * c) for u, i, c in zip(u_data['data'], i_data['data'], c_data['data'])]
-							powSum.append(power)
-							data['datasets'].append({'label': 'P'+str(i), 'data': power, 'borderColor': color, 'borderDash': [0,10], 'borderCapStyle' : 'round'})
+							integral = dt*np.mean(power)*self.getScale("U")/1000
+							integral = (int(integral*100)/100)
+							label = 'P'+str(i)
+							if integral > 0:
+								label += ": {:.2f}kw".format(integral)
+							data['datasets'].append({'label': label, 'data': power, 'borderColor': color, 'borderDash': [0,10], 'borderCapStyle' : 'round'})
 							
-							#dx = (self.endTime-self.startTime).total_seconds()/len(data['labels'])
-							#print("=========== {} {} {}".format((self.endTime-self.startTime).total_seconds(),dx,len(data['labels'])))
-							#integral = np.trapz(power, dx=dx)	
-							#print(integral)
-					powSum = np.sum(powSum, 0)
-					integral = np.mean(powSum)*((self.endTime-self.startTime).total_seconds())
-					data['title'] = str(int(integral))+" w"
-					print(integral)
 				
 			else:
 				data['labels'].append(self.startTime)
 				data['labels'].append(self.endTime)
 				data['datasets'].append({'label': 'Empty', 'data' : [0,0]})
 			print("-------------------------------------------->")
+			self.cv.release()
 			yield f"data:{json.dumps(data)}\n\n"
+			self.cv.acquire()
 			print("<--------------------------------------------")
 
-			time.sleep(0.5)		
 			self.cv.wait()
 		
 		self.cv.release()
