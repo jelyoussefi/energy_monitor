@@ -34,8 +34,12 @@ class EnergyMonitor():
 		self.endTime = rows[-1][1]
 		self.startTime = self.endTime -  timedelta(seconds=self.interval)
 		self.max_samples = 32
+		self.k = 1
 		if 'max_samples' in self.config:
 			self.max_samples = self.config['max_samples']
+
+		if 'k' in self.config:
+			self.k = self.config['k']
 
 		self.cursor.execute("SHOW columns FROM `"+self.config['table']+"`")
 		self.columns = self.cursor.fetchall()
@@ -95,26 +99,20 @@ class EnergyMonitor():
 			data['title'] = ""
 			rows = self.getData()
 			if len(rows) > 0:
-				samples_step = int(len(rows)/self.max_samples) if len(rows) > self.max_samples else 1
-
-				labels = list()
-				for r in range(0, len(rows), samples_step):
-					labels.append(rows[r][1])
-				data['labels'] = labels;
-				data['datasets'] = []
-
+				
 				for c in range(2, len(self.columns)):
 					data['datasets'].append({'label':self.columns[c][0], 'data': []})
 				for row in rows:
 					for c in range(2, len(self.columns)):
 						data['datasets'][c-2]['data'].append(row[c]/self.getScale(self.columns[c][0]))
-				if samples_step > 1:
-					for c in range(2, len(self.columns)):
-						data['datasets'][c-2]['data'] = self.subsample(data['datasets'][c-2]['data'], samples_step)
+				
 				u_data = self.getDataByLabel(data['datasets'], 'U')
 				if u_data is not None:
 					u_data['borderColor'] = self.colors[0]
 					dt = (self.endTime-self.startTime).total_seconds()/3600.0
+					u_scale = self.getScale("U")
+					if u_scale != 1:
+						u_data['label'] = "{}: 1/{}".format(u_data['label'], u_scale)
 					for i in range(0, len(data['datasets'])):
 						i_data = self.getDataByLabel(data['datasets'], "I"+str(i))
 						c_data = self.getDataByLabel(data['datasets'], "C"+str(i))
@@ -122,8 +120,8 @@ class EnergyMonitor():
 							color = self.colors[i+1]
 							i_data['borderColor'] = c_data['borderColor'] = color
 							c_data['borderDash'] = [10,5]
-							power = [abs(u * i * c) for u, i, c in zip(u_data['data'], i_data['data'], c_data['data'])]
-							integral = dt*np.mean(power)*self.getScale("U")/1000
+							power = [abs(u * i * c * self.k) for u, i, c in zip(u_data['data'], i_data['data'], c_data['data'])]
+							integral = (np.trapz(power, dx=dt/len(power))*u_scale)/1000
 							integral = (int(integral*100)/100)
 							label = ' P'+str(i)
 							if integral > 0:
@@ -131,7 +129,17 @@ class EnergyMonitor():
 								data['datasets'].append({'label': label, 'data': power, 
 									  'borderColor': color, 'borderDash': [0,10], 'borderCapStyle' : 'round'})
 							
-				
+				samples_step = int(len(rows)/self.max_samples) if len(rows) > self.max_samples else 1
+
+				labels = list()
+				for r in range(0, len(rows), samples_step):
+					labels.append(rows[r][1])
+				data['labels'] = labels;
+				if samples_step > 1:
+					for ds in data['datasets']:
+						ds['data'] = self.subsample(ds['data'], samples_step)
+					
+
 			else:
 				data['labels'].append(self.startTime)
 				data['labels'].append(self.endTime)
