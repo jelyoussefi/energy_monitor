@@ -1,133 +1,163 @@
-<!DOCTYPE html>
-<html lang="en"   width="100%">
-    <head>
-        <meta charset="UTF-8">
-        <title>Energie Monitoring</title>
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.css" rel="stylesheet">
-        <link href="../static/css/style.css" rel="stylesheet">
+{% extends "bootstrap/base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
 
-    </head>
-    <body >
-        <div id="container" class="center" >
-            <canvas id="canvas" class="center" ></canvas>
-            <div id="slider_container" class="center"> 
-                <button id="left-arrow" class="arrow" onclick="moveLeft()"> </button>
-                <div id="interval">
-                  <input type="range" id="rangeInput" name="rangeInput" min="1" max="24" value="24" onchange="updateInterval(this.value)" oninput="amount.value=rangeInput.value"> 
-                  <output name="amount" id="amount" for="rangeInput">24</output>
-                </div>
-                <button id="right-arrow" class="arrow" onclick="moveRight()"> </button>
+{% block title %}Energie Monitoring{% endblock %}
+
+{% block head %}
+  {{ super() }}
+   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/css/bootstrap-datetimepicker.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.css" rel="stylesheet">
+    <link href="../static/css/style.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+    <div id="container" class="center" >
+        <div id="slider_container" class="center"> 
+            <button id="left-arrow" class="arrow" onclick="moveLeft()"> </button>
+            <div id="interval" >
+                <form class="row main-form" method="POST" action="">
+                    {{ form.hidden_tag() }}
+                    <div class='row-sm-4 dateTimePicker'  data-date-format="dd-mm-yyyy" >
+                        {{ wtf.form_field(form.startTime, form_type='horizontal') }}
+                    </div>
+                    <div class='row-sm-4 dateTimePicker'  data-date-format="dd-mm-yyyy" >
+                        {{ wtf.form_field(form.endTime, form_type='horizontal') }}
+                    </div>
+                    <div  class="dateTimePicker" >
+                        {{ form.submit(class="btn btn-outline-info") }}
+                    </div>
+                </form>
             </div>
+            <button id="right-arrow" class="arrow" onclick="moveRight()"> </button>
         </div>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-colorschemes"></script>
+        <canvas id="canvas" class="center" ></canvas>
 
-        <script>
-            
-            $(document).ready(function () {
-
-                send_command = function(data) {
-                    $.ajax({
-                        url: '/handle_command',
-                        type: 'POST',
-                        data: JSON.stringify(data),
-                        contentType: 'application/json;charset=UTF-8',
-                        cache:false,
-                        error: function(response){
-                            alert('Error sending data')
-                        }
-                    });
-                }
-
-                moveLeft = function() {
-                    send_command({'type': 'scroll_left'})
-                }
-                moveRight = function() {
-                    send_command({'type': 'scroll_right'})
-                }
-
-                updateInterval = function(value) {
-                    interval = parseInt(value);
-                    send_command({'type': 'interval', 'value': interval*60*60})
-                }
-
-                updateInterval(document.getElementById('rangeInput').value)
-                
-                var chartConfig = {
-                    type: 'line',
-                    data: {},
-                    options: {
-                        responsive : true,
-                       
-                        title: {
-                            display: false,
-                            text: "",
-                            fontSize: 18,
-                            fontColor: "#00c",
-                            padding: 10
-                        },
-                        legend: {
-                            display: true,
-                            labels: {
-                                fontSize: 20,
-                                boxWidth: 2,
-                                padding: 15,
-                                fontStyle: "bold"                        
-                            }
-                        },
-                        scales: {
-                            xAxes: [{
-                                type: 'time',
-                                distribution: 'linear',
-                                display: true,
-                                scaleLabel: {
-                                    display: true,
-                                    labelString: 'Time'
-                                },
-                                time: {
-                                    time: {
-                                        unit: 'minute'
-                                    },
-                                    displayFormats: {
-                                        minute: 'MMM D HH:MM'
-                                   }
-                                },
-                                ticks: {
-                                    beginAtZero: false
-                                }
-                            }],
-                            yAxes: [{
-                                display: true,
-                                scaleLabel: {
-                                    display: false,
-                                    fontSize: 16,
-                                    fontColor: "#e00"
-                                },
-                                ticks: {
-                                    beginAtZero: false
-                                },
-                            }]
-                        }
-                    }
-                };
+    </div>
+{% endblock %}
 
 
-                Chart.defaults.global.elements.point.radius = 0;
-                Chart.defaults.global.elements.line.fill = false;
-                Chart.defaults.global.elements.line.borderWidth = 2;
-                const context = document.getElementById('canvas').getContext('2d');
-                const chart = new Chart(context, chartConfig);
-                const source = new EventSource("/data");
-                source.onmessage = function (event) {
-                    data = JSON.parse(event.data);
-                    chartConfig.options.title.text = data['title'];
-                    chartConfig.data = data;
-                    chart.update();
+{% block scripts %}
+  {{ super() }}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/js/bootstrap-datetimepicker.min.js"></script>
+    <script type="text/javascript">
+     $(document).ready(function () {
+        $(function () {
+            $('#startDatePicker').datetimepicker();
+            $('#endDatePicker').datetimepicker();
+        });
+
+        send_command = function(data) {
+            $.ajax({
+                url: '/handle_command',
+                type: 'POST',
+                data: JSON.stringify(data),
+                contentType: 'application/json;charset=UTF-8',
+                cache:false,
+                error: function(response){
+                    alert('Error sending data')
                 }
             });
-        </script>
-    </body>
-</html>
+        }
+
+        moveLeft = function() {
+            send_command({'type': 'scroll_left'})
+        }
+        moveRight = function() {
+            send_command({'type': 'scroll_right'})
+        }
+
+        var chartConfig = {
+            type: 'line',
+            data: {
+                    'labels' : [], 
+                    'datasets': []
+                },
+            options: {
+                responsive : true,
+               
+                title: {
+                    display: false,
+                    text: "",
+                    fontSize: 18,
+                    fontColor: "#00c",
+                    padding: 10
+                },
+                legend: {
+                    display: true,
+                    labels: {
+                        fontSize: 20,
+                        boxWidth: 2,
+                        padding: 15,
+                        fontStyle: "bold"                        
+                    }
+                },
+                scales: {
+                    xAxes: [{
+                        type: 'time',
+                        distribution: 'linear',
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Time'
+                        },
+                        time: {
+                            time: {
+                                unit: 'minute'
+                            },
+                            displayFormats: {
+                                minute: 'MMM D HH:MM'
+                           }
+                        },
+                        ticks: {
+                            beginAtZero: false
+                        }
+                    }],
+                    yAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: false,
+                            fontSize: 16,
+                            fontColor: "#e00"
+                        },
+                        ticks: {
+                            beginAtZero: false
+                        },
+                    }]
+                }
+            }
+        };
+
+        function getMetaData(list, label) {
+            for (var i=0; i<list.length; i++ ) {
+                if (list[i].label == label) {
+                    return list[i]._meta;
+                }
+            }
+            return null;
+        }
+        Chart.defaults.global.elements.point.radius = 0;
+        Chart.defaults.global.elements.line.fill = false;
+        Chart.defaults.global.elements.line.borderWidth = 2;
+        const context = document.getElementById('canvas').getContext('2d');
+        const chart = new Chart(context, chartConfig);
+        const source = new EventSource("/data");
+        source.onmessage = function (event) {
+            data = JSON.parse(event.data);
+            chartConfig.options.title.text = data['title'];
+            datasets = chartConfig.data.datasets;
+            chartConfig.data = data;
+            for (var i=0; i<chartConfig.data.datasets.length; i++ ) {
+                var metaData = getMetaData(datasets, chartConfig.data.datasets[i].label);
+                if (metaData) {
+                    chartConfig.data.datasets[i]._meta = metaData;
+                }
+            }
+            chart.update();
+        }
+    });
+  </script>
+{% endblock %}

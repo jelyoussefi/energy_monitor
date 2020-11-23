@@ -6,15 +6,35 @@ body {
 	position: absolute;
 	width: 100vw;
 	height: 100vh;
-	top:10px; 
+	top:20px; 
 	bottom:0; 
 	right:0; 
 	left:0;
 }
 
+.main-form {
+		height: 100%;
+		width: 100%;
+        display: flex;
+        flex-direction: row;
+		justify-content: space-around;
+		margin:auto;
+		vertical-align: middle;
+
+    }
+
 .center {
 	margin: auto;
 }
+
+.field {
+	height: 100%;
+	vertical-align: middle;
+	margin:auto;
+	background-color: red;
+}
+
+
 
 #container {
 	width: 90%;
@@ -31,10 +51,11 @@ body {
 
 #slider_container {
 	width: 80%;
-	height: 50px;
+	height: 60px;
 	display: flex;
   	flex-direction: row;
-	margin-top: 0px;
+	margin:auto;
+	vertical-align: middle;
 }
 
 .arrow {
@@ -55,20 +76,18 @@ body {
 }
 
 #interval {
-	width: 80%;
+	width: 70%;
 	margin:auto;
 	vertical-align: middle;
+	margin-bottom: 40px;
 }
 
-#rangeInput {
-	width: 96%;
-	vertical-align: middle;
-}
 
-#amount {
+.dateTimePicker {
 	font-size: 16px;
-	color: red;
+	color: blue;
 	font-weight: bold;
-	vertical-align: middle;
-	padding-right: 0px;
+ 	display: flex;
+    align-items: center;
 }
+

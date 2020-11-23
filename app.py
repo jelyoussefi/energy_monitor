@@ -3,6 +3,9 @@ from datetime import datetime, timedelta
 import time
 from threading import Condition
 from flask import Flask, Response, json, request, render_template, jsonify
+from flask_bootstrap import Bootstrap
+from flask_wtf import Form
+from wtforms.fields import StringField, DateField, SubmitField
 from flaskext.mysql import MySQL
 from flask import session
 import numpy as np
@@ -32,6 +35,7 @@ class EnergyMonitor():
 		self.cursor.execute("SELECT * FROM `"+self.config['table']+"`")
 		rows = self.cursor.fetchall()
 		self.endTime = rows[-1][1]
+		print("---------T-------------- {}".format(type(self.endTime)))
 		self.startTime = self.endTime -  timedelta(seconds=self.interval)
 		self.max_samples = 32
 		self.k = 1
@@ -47,10 +51,26 @@ class EnergyMonitor():
 					"rgb(0,255,255)", "rgb(255,255,0)", "rgb(255,0,255)", "rgb(127,0,255)", "rgb(248,152,85)"]
 
 	def start(self):
+		class DatePickerForm(Form):
+			startTime = StringField("Start", id='startDatePicker')
+			endTime = StringField("Stop", id='endDatePicker')
+			submit = SubmitField('Submit')
+
 		app = self.app
-		@app.route('/')
+		Bootstrap(app)
+		@app.route('/', methods=['GET', 'POST'])
 		def index():
-			return render_template('index.html')
+			form = DatePickerForm()
+			if request.method == "POST" and form.validate():
+				self.cv.acquire()
+				self.startTime = datetime.strptime(form.startTime.data, '%m/%d/%Y %H:%M %p')
+				self.endTime = datetime.strptime(form.endTime.data, '%m/%d/%Y %H:%M %p')
+				self.cv.notify()
+				self.cv.release()
+
+				return ('', 204)
+
+			return render_template('index.html', form=form)
 
 		@app.route('/data')
 		def data():
@@ -68,10 +88,7 @@ class EnergyMonitor():
 				elif cmd['type'] == 'scroll_right':
 					self.endTime += timedelta(seconds=3600)
 					self.startTime += timedelta(seconds=3600)
-				elif cmd['type'] == 'interval':
-					self.interval = cmd['value']
-					self.startTime = self.endTime -  timedelta(seconds=self.interval)
-
+				
 				self.cv.notify()
 				self.cv.release()
 
@@ -135,6 +152,7 @@ class EnergyMonitor():
 				for r in range(0, len(rows), samples_step):
 					labels.append(rows[r][1])
 				data['labels'] = labels;
+
 				if samples_step > 1:
 					for ds in data['datasets']:
 						ds['data'] = self.subsample(ds['data'], samples_step)
