@@ -63,9 +63,18 @@ class EnergyMonitor():
 			form = DatePickerForm()
 			if request.method == "POST" and form.validate():
 				self.cv.acquire()
-				startTime = datetime.strptime(form.startTime.data, '%m/%d/%Y %H:%M %p')
-				self.endTime = datetime.strptime(form.endTime.data, '%m/%d/%Y %H:%M %p')
-				self.integral = (self.endTime-startTime).total_seconds()
+				startTime = None
+				endTime = None
+				if form.startTime.data:
+					startTime = datetime.strptime(form.startTime.data, '%m/%d/%Y %H:%M %p')
+				if form.endTime.data:
+					endTime = datetime.strptime(form.endTime.data, '%m/%d/%Y %H:%M %p')
+
+				self.endTime = endTime
+
+				if self.endTime is not None:
+					if startTime is not None:
+						self.integral = (self.endTime-startTime).total_seconds()
 				self.cv.notify()
 				self.cv.release()
 
@@ -81,14 +90,14 @@ class EnergyMonitor():
 		def handle_command():
 			if request.method == 'POST':
 				self.cv.acquire()
-				
-				cmd = request.get_json()
-				if cmd['type'] == 'scroll_left':
-					self.endTime -= timedelta(seconds=3600)
-				elif cmd['type'] == 'scroll_right':
-					self.endTime += timedelta(seconds=3600)
-				
-				self.cv.notify()
+				if self.endTime is not None:
+					cmd = request.get_json()
+					if cmd['type'] == 'scroll_left':
+						self.endTime -= timedelta(seconds=3600)
+					elif cmd['type'] == 'scroll_right':
+						self.endTime += timedelta(seconds=3600)
+					
+					self.cv.notify()
 				self.cv.release()
 
 			return json.dumps({'success':True}), 200, {'ContentType':'application/json'} 
@@ -96,15 +105,16 @@ class EnergyMonitor():
 		self.app.run(host='0.0.0.0', port=str(self.config['port']), threaded=True)
 
 	def getData(self):
-		if self.endTime is None:
+		endTime = self.endTime
+		if endTime is None:
 			self.cursor.execute("SELECT * FROM `"+self.config['table']+"`")
 			rows = self.cursor.fetchall()
-			self.endTime = rows[-1][1]
-		startTime = self.endTime -  timedelta(seconds=self.interval)
+			endTime = rows[-1][1]
+		startTime = endTime -  timedelta(seconds=self.interval)
 
 		print("\n\t Interval {} -> {}".format(startTime, self.endTime))
-		self.cursor.execute("SELECT * FROM `"+self.config['table']+"` WHERE date between timestamp \""+ str(startTime) + "\" and timestamp \""+str(self.endTime)+"\"")
-		return self.cursor.fetchall()
+		self.cursor.execute("SELECT * FROM `"+self.config['table']+"` WHERE date between timestamp \""+ str(startTime) + "\" and timestamp \""+str(endTime)+"\"")
+		return (self.cursor.fetchall(),endTime)
 
 	def getDataByLabel(self, datasets, label):
 		for ds in datasets:
@@ -119,7 +129,7 @@ class EnergyMonitor():
 			data['labels'] = []
 			data['datasets'] = []
 			data['title'] = ""
-			rows = self.getData()
+			rows,endTime = self.getData()
 			if len(rows) > 0:
 				
 				for c in range(2, len(self.columns)):
@@ -164,9 +174,12 @@ class EnergyMonitor():
 					
 
 			else:
-				data['labels'].append(self.endTime -  timedelta(seconds=self.interval))
+				data['labels'].append(self.endTime - timedelta(seconds=self.interval))
 				data['labels'].append(self.endTime)
 				data['datasets'].append({'label': 'Empty', 'data' : [0,0]})
+			if endTime is not None:
+				data['endTime'] = endTime;
+				data['startTime'] = endTime - timedelta(seconds=self.interval)
 			self.cv.release()
 			yield f"data:{json.dumps(data)}\n\n"
 			self.cv.acquire()
