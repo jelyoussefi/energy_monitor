@@ -9,6 +9,9 @@ from wtforms.fields import StringField, DateField, SubmitField
 from flaskext.mysql import MySQL
 from flask import session
 import numpy as np
+import requests
+from json2html import *
+
 
 class EnergyMonitor():
 	def __init__(self, config_path=None):
@@ -102,7 +105,19 @@ class EnergyMonitor():
 
 			return json.dumps({'success':True}), 200, {'ContentType':'application/json'} 
 
+		@app.route('/production', methods=['GET', 'POST'])
+		def production():
+			if request.method == 'GET':
+				prod_url = "http://{}/production.js".format(self.config['ip'])
+				production = requests.get(prod_url)
+				production_json = json2html.convert(json=json.loads(production.text))
+
+				return render_template("json_template.html", json_data=production_json)
+
 		self.app.run(host='0.0.0.0', port=str(self.config['port']), threaded=True)
+
+		
+
 
 	def getData(self):
 		endTime = self.endTime

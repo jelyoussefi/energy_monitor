@@ -8,5 +8,6 @@
 	"port": 5000,
 	"scales": {"U": 100},
 	"refresh_time": 5,
-	"k": 0.1
+	"k": 0.1,
+	"ip": "localhost"
 }
