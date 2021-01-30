@@ -108,7 +108,7 @@ class EnergyMonitor():
 		@app.route('/production', methods=['GET', 'POST'])
 		def production():
 			if request.method == 'GET':
-				prod_url = "http://{}/production.js".format(self.config['ip'])
+				prod_url = "http://{}/production.json".format(self.config['ip'])
 				production = requests.get(prod_url)
 				production_json = json2html.convert(json=json.loads(production.text))
 
