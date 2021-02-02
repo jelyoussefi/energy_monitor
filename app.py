@@ -108,8 +108,8 @@ class EnergyMonitor():
 		@app.route('/production', methods=['GET', 'POST'])
 		def production():
 			if request.method == 'GET':
-				prod_url = "http://{}/production.json".format(self.config['ip'])
-				production = requests.get(prod_url)
+				prod_url = "http://{}/api/v1/production/inverters".format(self.config['ip'])
+				production = requests.get(prod_url, auth=('envoy', '079476'))
 				production_json = json2html.convert(json=json.loads(production.text))
 
 				return render_template("json_template.html", json_data=production_json)
