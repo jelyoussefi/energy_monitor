@@ -9,5 +9,8 @@
 	"scales": {"U": 100},
 	"refresh_time": 5,
 	"k": 0.1,
-	"ip": "localhost"
+	"envoy": {
+			"ip": "192.168.1.106",
+			"sid": 123456
+	}		
 }
