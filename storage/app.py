@@ -48,6 +48,8 @@ class EnergyMonitorStorage():
 			self.cv.wait(self.interval)
 			url ="http://{}".format(self.config['arduino']['ip'])
 			results = requests.get(url)
+			results = json.dumps(results)
+			print(results)
 			ins = energy.insert().values(
 								  		Us=results['Tensions']['Us'],Ub=results['Tensions']['Ub'], Ui=results['Tensions']['Ui'],
 								  		Is=results['Courants']['Is'],Ib=results['Courants']['Ib'], Ii=results['Courants']['Ii']
