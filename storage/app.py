@@ -52,8 +52,8 @@ class EnergyMonitorStorage():
 			results = json.loads(results.text)
 			print(results)
 			ins = energy.insert().values(
-								  		Us=results['Tensions']['Us'],Ub=results['Tensions']['Ub'], Ui=results['Tensions']['Ui'],
-								  		Is=results['Courants']['Is'],Ib=results['Courants']['Ib'], Ii=results['Courants']['Ii']
+								  		Us=results['tensions']['Us'],Ub=results['tensions']['Ub'], Ui=results['tensions']['Ui'],
+								  		Is=results['courants']['Is'],Ib=results['courants']['Ib'], Ii=results['courants']['Ii']
 										)
 			result = self.conn.execute(ins)
 
