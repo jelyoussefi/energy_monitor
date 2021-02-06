@@ -50,7 +50,7 @@ class EnergyMonitorStorage():
 			results = requests.get(url)
 			ins = energy.insert().values(
 								  		Us=results['Tensions']['Us'],Ub=results['Tensions']['Ub'], Ui=results['Tensions']['Ui'],
-								  		Is=results['Courants']['Is'],Ub=results['Courants']['Ib'], Ui=results['Courants']['Ii'],
+								  		Is=results['Courants']['Is'],Ub=results['Courants']['Ib'], Ui=results['Courants']['Ii']
 										)
 			result = self.conn.execute(ins)
 
