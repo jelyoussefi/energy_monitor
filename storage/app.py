@@ -55,8 +55,8 @@ class EnergyMonitorStorage():
 		self.running = True
 		while (self.running):
 			self.cv.wait(self.interval)
-			res_arduino = get("http://{}".format(self.config['arduino']['ip']))
-			res_envoy = get("http://{}/api/v1/production/inverters".format(self.config['envoy']['ip']),
+			res_arduino = self.get("http://{}".format(self.config['arduino']['ip']))
+			res_envoy = self.get("http://{}/api/v1/production/inverters".format(self.config['envoy']['ip']),
 							HTTPDigestAuth('envoy', self.config['envoy']['sid']))
 			print(res_envoy)	
 			ins = energy.insert().values(
