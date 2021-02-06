@@ -1,5 +1,5 @@
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 import time 
 import json
 from threading import Thread, Condition
@@ -17,6 +17,7 @@ meta = MetaData()
 
 energy = Table(
    'energy', meta, 
+   Column('Date', DateTime),
    Column('Us', Float), 
    Column('Ub', Float),
    Column('Ui', Float),
@@ -41,19 +42,26 @@ class EnergyMonitorStorage():
 		meta.create_all(self.engine)
 		self.conn = self.engine.connect()
 	
+	def get(self, url, auth=None):
+			if auth is None:
+				results = requests.get(url)
+			else:
+				results = requests.get(url, auth=auth)
+			return json.loads(results.text)
+
 	def start(self):
 		self.cv.acquire()
 		self.running = True
 		while (self.running):
 			self.cv.wait(self.interval)
-			url ="http://{}".format(self.config['arduino']['ip'])
-			print(url)
-			results = requests.get(url)
-			results = json.loads(results.text)
-			print(results)
+			res_arduino = get("http://{}".format(self.config['arduino']['ip'])
+			res_envoy = get("http://{}/api/v1/production/inverters".format(self.config['envoy']['ip']),
+							HTTPDigestAuth('envoy', self.config['envoy']['sid']))
+			print(res_envoy)	
 			ins = energy.insert().values(
-								  		Us=results['tensions']['Us'],Ub=results['tensions']['Ub'], Ui=results['tensions']['Ui'],
-								  		Is=results['courants']['Is'],Ib=results['courants']['Ib'], Ii=results['courants']['Ii']
+										Date=datetime.now(),
+								  		Us=res_arduino['Us'],Ub=res_arduino['Ub'], Ui=res_arduino['Ui'],
+								  		Is=res_arduino['Is'],Ib=res_arduino['Ib'], Ii=res_arduino['Ii']
 										)
 			result = self.conn.execute(ins)
 
