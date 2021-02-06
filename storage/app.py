@@ -49,8 +49,7 @@ class EnergyMonitorStorage():
 			url ="http://{}".format(self.config['arduino']['ip'])
 			print(url)
 			results = requests.get(url)
-			print(results)
-			results = json.dumps(results)
+			results = json.loads(results.text)
 			print(results)
 			ins = energy.insert().values(
 								  		Us=results['Tensions']['Us'],Ub=results['Tensions']['Ub'], Ui=results['Tensions']['Ui'],
