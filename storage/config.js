@@ -1,9 +1,6 @@
 {
-	"user": "jamal",
-	"password": "Jamal$1969",
-	"database": "awahid_db",
-	"table": "energie10",
-	"server": "localhost",
+	"database": "sqlite:///energy_monitoring.db",
+	"table": "energy",
 	"interval": 1,
 	"arduino": {
 			"ip": "192.168.0.184"
