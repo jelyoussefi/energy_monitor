@@ -39,7 +39,7 @@ class EnergyMonitorStorage():
 		if 'interval' in self.config:
 			self.interval = self.config['interval']
 
-		self.engine = create_engine(config.database, echo = True)
+		self.engine = create_engine(config['database'], echo = True)
 		meta.create_all(self.engine)
 		self.conn = self.engine.connect()
 	
